@@ -6,7 +6,11 @@ App needs to be on both Android and IOS. No database is needed, and data is dele
 
 - React Native app built with Expo (TypeScript).
 - Historical daily prices are fetched from Yahoo Finance's chart API (no API key required).
-- Close price plus 50-day and 100-day simple moving averages are plotted with react-native-chart-kit.
+- Three charts are plotted with react-native-chart-kit:
+  - **Price**: Close price plus 50-day and 100-day simple moving averages.
+  - **Bollinger Bands**: 20-day SMA with upper/lower bands (+/- 2 standard deviations), with the Close price drawn on top.
+  - **MACD**: MACD and Signal lines, plus the Histogram rendered as a bar chart.
+- Supports both portrait and landscape orientation.
 - All data lives in component state only and is discarded when the app is closed.
 
 ## Running the app
@@ -26,10 +30,11 @@ Press `a` for Android, `i` for iOS (macOS only), or scan the QR code with the Ex
 - **Web (quick smoke test)**: `npx expo start --web`. Layout, date picker, and chart may render slightly differently than on native.
 
 Things to check once the app is running:
-- Default symbol `AAPL` with the default start date (1 year ago) plots Close, MA-50, and MA-100.
+- Default symbol `AAPL` with the default start date (1 year ago) plots Close, MA-50, and MA-100, plus the Bollinger Bands and MACD charts.
 - An invalid symbol (e.g. `ZZZZZ`) shows a "No data found" error.
 - Choosing a different start date via the date picker and re-plotting updates the chart.
-- A recently-listed/IPO stock still renders without errors (moving averages fall back to the close price until enough history exists).
+- A recently-listed/IPO stock still renders without errors (moving averages and bands fall back to the close price until enough history exists).
+- Rotating the device to landscape reflows the layout and widens the charts.
 
 ## Installing a standalone build (EAS Build)
 
