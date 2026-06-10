@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import { LineChart } from 'react-native-chart-kit';
 import { fetchDailyHistory } from './src/utils/stooq';
 import { simpleMovingAverage } from './src/utils/movingAverage';
@@ -52,11 +52,13 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [chartData, setChartData] = useState<ChartData | null>(null);
 
-  const onChangeDate = (event: DateTimePickerEvent, selected?: Date) => {
+  const onValueChangeDate = (_event: DateTimePickerChangeEvent, selected: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
-    if (event.type !== 'dismissed' && selected) {
-      setStartDate(selected);
-    }
+    setStartDate(selected);
+  };
+
+  const onDismissDate = () => {
+    setShowDatePicker(false);
   };
 
   const handlePlot = async () => {
@@ -130,7 +132,14 @@ export default function App() {
           <Text>{formatDate(startDate)}</Text>
         </TouchableOpacity>
         {showDatePicker && (
-          <DateTimePicker value={startDate} mode="date" display="default" maximumDate={new Date()} onChange={onChangeDate} />
+          <DateTimePicker
+            value={startDate}
+            mode="date"
+            display="default"
+            maximumDate={new Date()}
+            onValueChange={onValueChangeDate}
+            onDismiss={onDismissDate}
+          />
         )}
 
         <TouchableOpacity style={styles.button} onPress={handlePlot} disabled={loading}>
