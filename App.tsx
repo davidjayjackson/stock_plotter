@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
   Keyboard,
   Platform,
   ScrollView,
@@ -9,13 +8,15 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import DateTimePicker, { DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import { LineChart } from 'react-native-chart-kit';
-import { fetchDailyHistory } from './src/utils/stooq';
+import { fetchDailyHistory } from './src/utils/yahooFinance';
 import { simpleMovingAverage } from './src/utils/movingAverage';
+import { bollingerBands, macd } from './src/utils/indicators';
 
 const LOOKBACK_DAYS = 220; // extra calendar days fetched before the start date so 50/100-day averages are ready from day one
 const MAX_LABELS = 6;
@@ -25,6 +26,12 @@ interface ChartData {
   close: number[];
   ma50: number[];
   ma100: number[];
+  bbUpper: number[];
+  bbMiddle: number[];
+  bbLower: number[];
+  macdLine: number[];
+  signalLine: number[];
+  histogram: number[];
 }
 
 function defaultStartDate(): Date {
@@ -81,6 +88,8 @@ export default function App() {
       const closes = points.map((p) => p.close);
       const ma50 = simpleMovingAverage(closes, 50);
       const ma100 = simpleMovingAverage(closes, 100);
+      const bands = bollingerBands(closes, 20, 2);
+      const { macdLine, signalLine, histogram } = macd(closes);
 
       let sliceStart = points.findIndex((p) => p.date >= startDate);
       if (sliceStart === -1) sliceStart = 0;
@@ -94,12 +103,21 @@ export default function App() {
 
       const displayMa50 = ma50.slice(sliceStart).map((v, i) => v ?? displayClose[i]);
       const displayMa100 = ma100.slice(sliceStart).map((v, i) => v ?? displayClose[i]);
+      const displayBbUpper = bands.upper.slice(sliceStart).map((v, i) => v ?? displayClose[i]);
+      const displayBbMiddle = bands.middle.slice(sliceStart).map((v, i) => v ?? displayClose[i]);
+      const displayBbLower = bands.lower.slice(sliceStart).map((v, i) => v ?? displayClose[i]);
 
       setChartData({
         labels: buildLabels(displayDates),
         close: displayClose,
         ma50: displayMa50,
         ma100: displayMa100,
+        bbUpper: displayBbUpper,
+        bbMiddle: displayBbMiddle,
+        bbLower: displayBbLower,
+        macdLine: macdLine.slice(sliceStart),
+        signalLine: signalLine.slice(sliceStart),
+        histogram: histogram.slice(sliceStart),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load data.');
@@ -108,7 +126,7 @@ export default function App() {
     }
   };
 
-  const screenWidth = Dimensions.get('window').width;
+  const { width: screenWidth } = useWindowDimensions();
   const chartWidth = chartData ? Math.max(screenWidth - 32, chartData.close.length * 4) : screenWidth - 32;
 
   return (
@@ -150,38 +168,41 @@ export default function App() {
         {error && <Text style={styles.error}>{error}</Text>}
 
         {chartData && (
-          <View style={styles.spacer}>
-            <View style={styles.legend}>
-              <LegendItem color="#1f77b4" label="Close" />
-              <LegendItem color="#ff7f0e" label="MA 50" />
-              <LegendItem color="#2ca02c" label="MA 100" />
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator>
-              <LineChart
-                data={{
-                  labels: chartData.labels,
-                  datasets: [
-                    { data: chartData.close, color: () => '#1f77b4', strokeWidth: 2 },
-                    { data: chartData.ma50, color: () => '#ff7f0e', strokeWidth: 2 },
-                    { data: chartData.ma100, color: () => '#2ca02c', strokeWidth: 2 },
-                  ],
-                }}
-                width={chartWidth}
-                height={300}
-                withDots={false}
-                chartConfig={{
-                  backgroundColor: '#ffffff',
-                  backgroundGradientFrom: '#ffffff',
-                  backgroundGradientTo: '#ffffff',
-                  decimalPlaces: 2,
-                  color: () => '#333333',
-                  labelColor: () => '#333333',
-                  propsForBackgroundLines: { stroke: '#e3e3e3' },
-                }}
-                style={styles.chart}
-              />
-            </ScrollView>
-          </View>
+          <>
+            <IndicatorChart
+              title="Price"
+              labels={chartData.labels}
+              width={chartWidth}
+              series={[
+                { data: chartData.close, color: '#1f77b4', label: 'Close' },
+                { data: chartData.ma50, color: '#ff7f0e', label: 'MA 50' },
+                { data: chartData.ma100, color: '#2ca02c', label: 'MA 100' },
+              ]}
+            />
+
+            <IndicatorChart
+              title="Bollinger Bands"
+              labels={chartData.labels}
+              width={chartWidth}
+              series={[
+                { data: chartData.close, color: '#1f77b4', label: 'Close' },
+                { data: chartData.bbUpper, color: '#9467bd', label: 'Upper' },
+                { data: chartData.bbMiddle, color: '#8c564b', label: 'Middle' },
+                { data: chartData.bbLower, color: '#17becf', label: 'Lower' },
+              ]}
+            />
+
+            <IndicatorChart
+              title="MACD"
+              labels={chartData.labels}
+              width={chartWidth}
+              series={[
+                { data: chartData.macdLine, color: '#1f77b4', label: 'MACD' },
+                { data: chartData.signalLine, color: '#ff7f0e', label: 'Signal' },
+                { data: chartData.histogram, color: '#2ca02c', label: 'Histogram' },
+              ]}
+            />
+          </>
         )}
       </ScrollView>
     </View>
@@ -193,6 +214,46 @@ function LegendItem({ color, label }: { color: string; label: string }) {
     <View style={styles.legendItem}>
       <View style={[styles.legendSwatch, { backgroundColor: color }]} />
       <Text>{label}</Text>
+    </View>
+  );
+}
+
+interface Series {
+  data: number[];
+  color: string;
+  label: string;
+}
+
+function IndicatorChart({ title, labels, series, width }: { title: string; labels: string[]; series: Series[]; width: number }) {
+  return (
+    <View style={styles.spacer}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.legend}>
+        {series.map((s) => (
+          <LegendItem key={s.label} color={s.color} label={s.label} />
+        ))}
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator>
+        <LineChart
+          data={{
+            labels,
+            datasets: series.map((s) => ({ data: s.data, color: () => s.color, strokeWidth: 2 })),
+          }}
+          width={width}
+          height={300}
+          withDots={false}
+          chartConfig={{
+            backgroundColor: '#ffffff',
+            backgroundGradientFrom: '#ffffff',
+            backgroundGradientTo: '#ffffff',
+            decimalPlaces: 2,
+            color: () => '#333333',
+            labelColor: () => '#333333',
+            propsForBackgroundLines: { stroke: '#e3e3e3' },
+          }}
+          style={styles.chart}
+        />
+      </ScrollView>
     </View>
   );
 }
@@ -244,6 +305,11 @@ const styles = StyleSheet.create({
   error: {
     color: '#d32f2f',
     marginTop: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
   },
   legend: {
     flexDirection: 'row',
