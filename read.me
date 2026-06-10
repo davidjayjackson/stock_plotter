@@ -1,3 +1,19 @@
 The objective is to use Claude Code to create a simple stock charting app.
 App prompt for stock symbol and starting date for plot. Create a line plot with close, and 50/100 day moving averages.
 App needs to be on both Android and IOS. No database is needed, and data is deleted when the app is closed.
+
+## Implementation
+
+- React Native app built with Expo (TypeScript).
+- Historical daily prices are fetched from Stooq's free CSV endpoint (no API key required).
+- Close price plus 50-day and 100-day simple moving averages are plotted with react-native-chart-kit.
+- All data lives in component state only and is discarded when the app is closed.
+
+## Running the app
+
+```
+npm install
+npx expo start
+```
+
+Press `a` for Android, `i` for iOS (macOS only), or scan the QR code with the Expo Go app.
