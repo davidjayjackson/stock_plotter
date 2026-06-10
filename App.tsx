@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import DateTimePicker, { DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
-import { LineChart } from 'react-native-chart-kit';
+import { BarChart, LineChart } from 'react-native-chart-kit';
 import { fetchDailyHistory } from './src/utils/yahooFinance';
 import { simpleMovingAverage } from './src/utils/movingAverage';
 import { bollingerBands, macd } from './src/utils/indicators';
@@ -185,22 +185,19 @@ export default function App() {
               labels={chartData.labels}
               width={chartWidth}
               series={[
-                { data: chartData.close, color: '#1f77b4', label: 'Close' },
                 { data: chartData.bbUpper, color: '#9467bd', label: 'Upper' },
                 { data: chartData.bbMiddle, color: '#8c564b', label: 'Middle' },
                 { data: chartData.bbLower, color: '#17becf', label: 'Lower' },
+                { data: chartData.close, color: '#1f77b4', label: 'Close', strokeWidth: 3 },
               ]}
             />
 
-            <IndicatorChart
-              title="MACD"
+            <MacdChart
               labels={chartData.labels}
               width={chartWidth}
-              series={[
-                { data: chartData.macdLine, color: '#1f77b4', label: 'MACD' },
-                { data: chartData.signalLine, color: '#ff7f0e', label: 'Signal' },
-                { data: chartData.histogram, color: '#2ca02c', label: 'Histogram' },
-              ]}
+              macdLine={chartData.macdLine}
+              signalLine={chartData.signalLine}
+              histogram={chartData.histogram}
             />
           </>
         )}
@@ -222,7 +219,18 @@ interface Series {
   data: number[];
   color: string;
   label: string;
+  strokeWidth?: number;
 }
+
+const baseChartConfig = {
+  backgroundColor: '#ffffff',
+  backgroundGradientFrom: '#ffffff',
+  backgroundGradientTo: '#ffffff',
+  decimalPlaces: 2,
+  color: () => '#333333',
+  labelColor: () => '#333333',
+  propsForBackgroundLines: { stroke: '#e3e3e3' },
+};
 
 function IndicatorChart({ title, labels, series, width }: { title: string; labels: string[]; series: Series[]; width: number }) {
   return (
@@ -237,22 +245,78 @@ function IndicatorChart({ title, labels, series, width }: { title: string; label
         <LineChart
           data={{
             labels,
-            datasets: series.map((s) => ({ data: s.data, color: () => s.color, strokeWidth: 2 })),
+            datasets: series.map((s) => ({ data: s.data, color: () => s.color, strokeWidth: s.strokeWidth ?? 2 })),
           }}
           width={width}
           height={300}
           withDots={false}
-          chartConfig={{
-            backgroundColor: '#ffffff',
-            backgroundGradientFrom: '#ffffff',
-            backgroundGradientTo: '#ffffff',
-            decimalPlaces: 2,
-            color: () => '#333333',
-            labelColor: () => '#333333',
-            propsForBackgroundLines: { stroke: '#e3e3e3' },
-          }}
+          withShadow={false}
+          chartConfig={baseChartConfig}
           style={styles.chart}
         />
+      </ScrollView>
+    </View>
+  );
+}
+
+function MacdChart({
+  labels,
+  width,
+  macdLine,
+  signalLine,
+  histogram,
+}: {
+  labels: string[];
+  width: number;
+  macdLine: number[];
+  signalLine: number[];
+  histogram: number[];
+}) {
+  return (
+    <View style={styles.spacer}>
+      <Text style={styles.sectionTitle}>MACD</Text>
+      <View style={styles.legend}>
+        <LegendItem color="#1f77b4" label="MACD" />
+        <LegendItem color="#ff7f0e" label="Signal" />
+        <LegendItem color="#2ca02c" label="Histogram" />
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator>
+        <View>
+          <LineChart
+            data={{
+              labels,
+              datasets: [
+                { data: macdLine, color: () => '#1f77b4', strokeWidth: 2 },
+                { data: signalLine, color: () => '#ff7f0e', strokeWidth: 2 },
+              ],
+            }}
+            width={width}
+            height={200}
+            withDots={false}
+            withShadow={false}
+            withVerticalLabels={false}
+            chartConfig={baseChartConfig}
+            style={styles.chart}
+          />
+          <BarChart
+            data={{ labels, datasets: [{ data: histogram }] }}
+            width={width}
+            height={120}
+            fromZero={false}
+            withInnerLines={false}
+            showBarTops={false}
+            showValuesOnTopOfBars={false}
+            yAxisLabel=""
+            yAxisSuffix=""
+            chartConfig={{
+              ...baseChartConfig,
+              fillShadowGradient: '#2ca02c',
+              fillShadowGradientOpacity: 1,
+              barPercentage: 0.15,
+            }}
+            style={styles.chart}
+          />
+        </View>
       </ScrollView>
     </View>
   );

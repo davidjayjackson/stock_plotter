@@ -30,3 +30,18 @@ Things to check once the app is running:
 - An invalid symbol (e.g. `ZZZZZ`) shows a "No data found" error.
 - Choosing a different start date via the date picker and re-plotting updates the chart.
 - A recently-listed/IPO stock still renders without errors (moving averages fall back to the close price until enough history exists).
+
+## Installing a standalone build (EAS Build)
+
+To install the app on your phone without running a dev server, build it with [EAS Build](https://docs.expo.dev/build/introduction/):
+
+```
+npm install -g eas-cli
+eas login
+eas build --platform android --profile preview
+```
+
+- `eas login` requires a free Expo account.
+- The `preview` profile (defined in `eas.json`) builds an installable `.apk` via Expo's cloud build service.
+- When the build finishes, EAS prints a download link/QR code. Open it on your phone, download the APK, and install it (you may need to allow "Install from unknown sources").
+- For iOS, installing on a physical device requires an Apple Developer Program account ($99/year) and `eas build --platform ios --profile preview`.
