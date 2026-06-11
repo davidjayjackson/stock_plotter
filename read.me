@@ -30,7 +30,7 @@ Press `a` for Android, `i` for iOS (macOS only), or scan the QR code with the Ex
 - **Web (quick smoke test)**: `npx expo start --web`. Layout, date picker, and chart may render slightly differently than on native.
 
 Things to check once the app is running:
-- Default symbol `AAPL` with the default start date (1 year ago) plots Close, MA-50, and MA-100, plus the Bollinger Bands and MACD charts.
+- Default symbol `AAPL` with the default start date (6 months ago) plots Close, MA-50, and MA-100, plus the Bollinger Bands and MACD charts.
 - An invalid symbol (e.g. `ZZZZZ`) shows a "No data found" error.
 - Choosing a different start date via the date picker and re-plotting updates the chart.
 - A recently-listed/IPO stock still renders without errors (moving averages and bands fall back to the close price until enough history exists).
@@ -50,3 +50,15 @@ eas build --platform android --profile preview
 - The `preview` profile (defined in `eas.json`) builds an installable `.apk` via Expo's cloud build service.
 - When the build finishes, EAS prints a download link/QR code. Open it on your phone, download the APK, and install it (you may need to allow "Install from unknown sources").
 - For iOS, installing on a physical device requires an Apple Developer Program account ($99/year) and `eas build --platform ios --profile preview`.
+
+## Pushing JS-only updates over the air (EAS Update)
+
+After the standalone app is installed, JS/TS-only changes (no new native dependencies) can be pushed without rebuilding:
+
+```
+eas update --branch preview --message "Describe the change"
+```
+
+- The installed app checks for updates on launch and applies them automatically.
+- Use the same branch name as the build profile's `channel` (`preview` for the preview build).
+- Changes that add/remove native dependencies (e.g. a new Expo package) still require a full rebuild via `eas build`.

@@ -36,7 +36,7 @@ interface ChartData {
 
 function defaultStartDate(): Date {
   const date = new Date();
-  date.setFullYear(date.getFullYear() - 1);
+  date.setMonth(date.getMonth() - 6);
   return date;
 }
 
