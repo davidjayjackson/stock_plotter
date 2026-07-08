@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -17,6 +17,7 @@ import { BarChart, LineChart } from 'react-native-chart-kit';
 import { fetchDailyHistory } from './src/utils/yahooFinance';
 import { simpleMovingAverage } from './src/utils/movingAverage';
 import { bollingerBands, macd } from './src/utils/indicators';
+import { loadWatchlist, saveWatchlist } from './src/utils/watchlist';
 
 const LOOKBACK_DAYS = 220; // extra calendar days fetched before the start date so 50/100-day averages are ready from day one
 const MAX_LABELS = 6;
@@ -58,6 +59,34 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chartData, setChartData] = useState<ChartData | null>(null);
+  const [watchlist, setWatchlist] = useState<string[]>([]);
+
+  useEffect(() => {
+    loadWatchlist().then(setWatchlist);
+  }, []);
+
+  const persistWatchlist = (next: string[]) => {
+    setWatchlist(next);
+    saveWatchlist(next);
+  };
+
+  const handleSaveSymbol = () => {
+    const trimmed = symbol.trim().toUpperCase();
+    if (!trimmed) {
+      setError('Please enter a stock symbol.');
+      return;
+    }
+    if (watchlist.includes(trimmed)) return;
+    persistWatchlist([...watchlist, trimmed]);
+  };
+
+  const handleSelectSymbol = (saved: string) => {
+    setSymbol(saved);
+  };
+
+  const handleRemoveSymbol = (saved: string) => {
+    persistWatchlist(watchlist.filter((s) => s !== saved));
+  };
 
   const onValueChangeDate = (_event: DateTimePickerChangeEvent, selected: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
@@ -136,14 +165,37 @@ export default function App() {
         <Text style={styles.title}>Stock Plotter</Text>
 
         <Text style={styles.label}>Symbol</Text>
-        <TextInput
-          style={styles.input}
-          value={symbol}
-          onChangeText={(text) => setSymbol(text.toUpperCase())}
-          autoCapitalize="characters"
-          autoCorrect={false}
-          placeholder="e.g. AAPL"
-        />
+        <View style={styles.symbolRow}>
+          <TextInput
+            style={[styles.input, styles.symbolInput]}
+            value={symbol}
+            onChangeText={(text) => setSymbol(text.toUpperCase())}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            placeholder="e.g. AAPL"
+          />
+          <TouchableOpacity style={styles.saveButton} onPress={handleSaveSymbol}>
+            <Text style={styles.saveButtonText}>Save</Text>
+          </TouchableOpacity>
+        </View>
+
+        {watchlist.length > 0 && (
+          <View style={styles.chipRow}>
+            {watchlist.map((saved) => (
+              <View key={saved} style={styles.chip}>
+                <TouchableOpacity onPress={() => handleSelectSymbol(saved)}>
+                  <Text style={styles.chipText}>{saved}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleRemoveSymbol(saved)}
+                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+                >
+                  <Text style={styles.chipRemove}>×</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
 
         <Text style={styles.label}>Start Date</Text>
         <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
@@ -350,6 +402,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
+  },
+  symbolRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  symbolInput: {
+    flex: 1,
+  },
+  saveButton: {
+    backgroundColor: '#1f77b4',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginLeft: 8,
+    justifyContent: 'center',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 10,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eef4fa',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingLeft: 12,
+    paddingRight: 8,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  chipText: {
+    color: '#1f77b4',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  chipRemove: {
+    color: '#888',
+    fontSize: 18,
+    marginLeft: 6,
+    lineHeight: 18,
   },
   button: {
     backgroundColor: '#1f77b4',
